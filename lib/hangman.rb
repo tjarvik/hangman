@@ -1,17 +1,15 @@
 
 class Game
+    require 'yaml'
     attr_accessor :letters_guessed
     attr_accessor :wrong_letters
-    attr_reader :word
+    attr_accessor :word
 
-    def initialize(mode)
-        if mode =~ /S/i
-            load
-        else
-            @word = pick_word
-            @letters_guessed = {}
-            @wrong_letters = 0
-        end
+    def initialize(word, letters_guessed, wrong_letters)
+        @word = word
+        @letters_guessed = letters_guessed
+        @wrong_letters = wrong_letters
+        @word = pick_word if @word == ""
     end
 
     def pick_word
@@ -26,16 +24,18 @@ class Game
         choices[rand(0..(choices.length - 1))].upcase.split("")
     end
 
-    def load###
-        @word = pick_word
-        @letters_guessed = {}
-        @wrong_letters = 0
+    def serialize
+        YAML::dump(self)
+    end
+
+    def self.deserialize(yaml_string)
+        YAML::load(yaml_string)
     end
 end
 
 class UI
     @@MAX_GUESSES = 10
-
+   
     def initialize
         mode = ""
         until mode =~ /^[NS]$/i
@@ -43,15 +43,20 @@ class UI
             mode = gets.chomp
         end
 
-        @game = Game.new(mode)
+        if mode =~ /S/i
+            load_game
+        else
+            @game = Game.new("", {}, [])
+        end
+
         display_word
-        take_turn until @game.wrong_letters == @@MAX_GUESSES
+        take_turn until @game.wrong_letters.length == @@MAX_GUESSES
         puts "Hangman dies. The word was #{@game.word.join}"
     end
 
     def display_word(guess = "")
         correct = false
-        blanks = false
+        still_blanks = false
         display_string = ""
         @game.word.each do |letter|
             if guess == letter
@@ -61,13 +66,13 @@ class UI
                 display_string += "#{letter} "
             else
                 display_string += "_ "
-                blanks = true
+                still_blanks = true
             end
         end
-        @game.wrong_letters += 1 unless correct && guess != ""
-        display_string += " (#{@@MAX_GUESSES - @game.wrong_letters} guesses remaining)"
+        @game.wrong_letters << guess unless correct || guess == ""
+        display_string += " (#{@@MAX_GUESSES - @game.wrong_letters.length} guesses remaining); wrong guesses: #{@game.wrong_letters.join(" ")}"
         puts display_string
-        unless blanks
+        unless still_blanks
             puts "You win!"
             exit
         end
@@ -90,15 +95,19 @@ class UI
     end
 
     def save_game
-        id = ""###
-        game_data = ""###word, letters guessed, wrong letters
+        id = "1.txt"
         Dir.mkdir("saved_games") unless Dir.exists? "saved_games"
         filename = "saved_games/game_#{id}"
-        File.open(filename,'w') do |file|
-            file.puts game_data
-        end
+        File.open(filename,'w') {|file| file.puts @game.serialize}
         exit
     end
+
+    def load_game
+        filename = "saved_games/game_1.txt"
+        data = File.read(filename)
+        @game = Game.deserialize(data)
+    end
+
 end
 
 UI.new

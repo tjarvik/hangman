@@ -1,0 +1,21 @@
+--- !ruby/object:Game
+word:
+- A
+- S
+- P
+- I
+- D
+- I
+- S
+- T
+- R
+- A
+letters_guessed:
+  E: ''
+  A: ''
+  N: ''
+  I: ''
+  T: ''
+wrong_letters:
+- E
+- N
